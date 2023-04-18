@@ -37,6 +37,13 @@ class CustomerModel(BaseModel):
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
+    def customer_list_response(self):
+        return {
+            "id":str(self.id),
+            "name": self.name,
+            "email": self.email
+        }
+
 
 class LoginResponseModel(BaseModel):
     id: str
