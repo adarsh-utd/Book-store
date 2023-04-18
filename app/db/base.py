@@ -6,3 +6,4 @@ db = mongo_client['book_store']
 
 customers_collection = db['customers']
 books_collection = db['books']
+favourite_books_collection = db['favourite_books']

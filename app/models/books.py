@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Optional
 
 from bson import ObjectId
@@ -36,3 +37,8 @@ class Books(BaseModel):
             "description": self.description,
             "image": self.image
         }
+
+
+class LikeDislike(str, Enum):
+    like = 'like'
+    dislike = 'dislike'

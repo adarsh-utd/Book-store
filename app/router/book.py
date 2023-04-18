@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from starlette import status
 
-from app.db.base import books_collection
-from app.models.books import BookRequestModel, Books
+from app.db.base import books_collection, favourite_books_collection
+from app.models.books import BookRequestModel, Books, LikeDislike
 from app.utils.utils import get_error_response, get_current_active_user
 
 router = APIRouter(
@@ -51,4 +51,47 @@ async def list_books(user: object = Depends(get_current_active_user)):
     response = {
         "books": books
     }
+    return response
+
+
+@router.post('/add-remove-favourite-books/{book_id}')
+async def add_remove_favourite_books(book_id: str,
+                                     like_dislike: LikeDislike,
+                                     user: object = Depends(get_current_active_user)):
+    find_favorite_books_query = {
+        "customer_id": user.get("_id")
+    }
+    favourite_books = favourite_books_collection.find_one(find_favorite_books_query)
+    response = {
+        "status": True
+    }
+    if favourite_books is None:
+        add_favourite_book = {
+            "customer_id": user.get("_id"),
+            "favourite_books_list": book_id
+        }
+        favourite_books_collection.insert_one(add_favourite_book)
+        response['message'] = 'added favourite book'
+    else:
+        favourite_books_list = favourite_books.get('favourite_books_list')
+        favourite_books_list = favourite_books_list.split(',')
+        if like_dislike == LikeDislike.like:
+            if book_id not in favourite_books_list:
+                favourite_books_list.append(book_id)
+                update = {
+                    "favourite_books_list": ','.join(favourite_books_list)
+                }
+                favourite_books_collection.update_one(find_favorite_books_query, {"$set": update})
+                response['message'] = 'added favourite book'
+        if like_dislike == LikeDislike.dislike:
+            if book_id not in favourite_books_list:
+                return get_error_response("Bad request",
+                                          status.HTTP_400_BAD_REQUEST)
+            favourite_books_list.remove(book_id)
+            update = {
+                "favourite_books_list": ','.join(favourite_books_list)
+            }
+            favourite_books_collection.update_one(find_favorite_books_query, {"$set": update})
+            response['message'] = 'Disliked'
+
     return response
