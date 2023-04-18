@@ -2,6 +2,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends
 from starlette import status
 
+from app.core.config import settings
 from app.db.base import books_collection, favourite_books_collection
 from app.models.books import BookRequestModel, Books, LikeDislike
 from app.utils.utils import get_error_response, get_current_active_user, get_book_cache, get_books_from_mongodb
@@ -30,6 +31,7 @@ async def create_book(request: BookRequestModel, user: object = Depends(get_curr
         book['image'] = request.image
 
     books_collection.insert_one(book)
+    settings.redis_instance.delete('books')
     response = {
         "status": True,
         "message": 'Book added'
