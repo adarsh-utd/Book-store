@@ -7,9 +7,9 @@ from starlette.responses import JSONResponse
 
 from app.core.config import settings
 from app.db.base import customers_collection
-from app.models.customers import Customers, LoginResponseModel
+from app.models.customers import Customers, LoginResponseModel, Login
 from app.utils.utils import get_user_email, get_error_response, get_timestamp, get_hashed_password, authenticate_user, \
-    create_access_token
+    create_access_token, verify_password
 
 router = APIRouter(
     prefix="/auth",
@@ -48,6 +48,32 @@ async def create_customer(request: Customers):
         id=str(customer_exist.get('_id')),
         name=customer_exist.get('name'),
         email=customer_exist.get('email'),
+        access_token=access_token,
+        access_token_expiry_time=expiry_time
+    )
+    return JSONResponse(status_code=status.HTTP_201_CREATED,
+                        content=jsonable_encoder(response))
+
+
+@router.post('/login')
+async def login(request: Login):
+    customer = customers_collection.find_one({'email': request.email})
+    if not customer:
+        return get_error_response("Customer not found",
+                                  status.HTTP_404_NOT_FOUND)
+    password_match = verify_password(request.password, customer.get("password"))
+    if not password_match:
+        return get_error_response("Incorrect password",
+                                  status.HTTP_400_BAD_REQUEST)
+
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={'sub': customer.get("email")},
+                                       expires_delta=access_token_expires)
+    expiry_time = get_timestamp() + settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 * 1000
+    response = LoginResponseModel(
+        id=str(customer.get('_id')),
+        name=customer.get('name'),
+        email=customer.get('email'),
         access_token=access_token,
         access_token_expiry_time=expiry_time
     )

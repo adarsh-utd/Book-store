@@ -44,3 +44,19 @@ class LoginResponseModel(BaseModel):
     email: str
     access_token: str
     access_token_expiry_time: int
+
+
+class Login(BaseModel):
+    email: EmailStr
+    password: str
+
+    class config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+        schema_extra = {
+            "example": {
+                "email": "jdoe@example.com",
+                "password": "password",
+            }
+        }
