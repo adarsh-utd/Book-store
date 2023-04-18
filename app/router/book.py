@@ -1,3 +1,4 @@
+from bson import ObjectId
 from fastapi import APIRouter, Depends
 from starlette import status
 
@@ -95,3 +96,20 @@ async def add_remove_favourite_books(book_id: str,
             response['message'] = 'Disliked'
 
     return response
+
+
+@router.get('/view-favourite-books/{customer_id}')
+async def get_favourite_books(customer_id: str, user: object = Depends(get_current_active_user)):
+    find_favorite_books_query = {
+        "customer_id": ObjectId(customer_id)
+    }
+    favourite_books = favourite_books_collection.find_one(find_favorite_books_query)
+    favourite_books_id_list = favourite_books.get("favourite_books_list").split(',')
+    book_list = list(books_collection.find({"is_deleted": False}))
+    favourite_book_list = [next((Books(**a).list_books() for a in book_list if a.get("_id") == ObjectId(book_id)), None)
+                           for book_id in favourite_books_id_list]
+    response = {
+        "favourite_book_list": favourite_book_list
+    }
+    return response
+
