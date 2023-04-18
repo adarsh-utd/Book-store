@@ -2,14 +2,20 @@ import os
 import time
 from datetime import timedelta, datetime
 from typing import Optional
-from jose import jwt
+
+from fastapi import HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
 from passlib.context import CryptContext
+from starlette import status
 from starlette.responses import JSONResponse
 
 from app.db.base import customers_collection
+from app.models.customers import CustomerModel, TokenData
 from app.models.error import APIResponseModel
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 def get_user_email(email: str):
@@ -54,3 +60,28 @@ def authenticate_user(email, password):
     if not verify_password(password, user.get('password')):
         return None
     return user
+
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, os.environ["SECRET_KEY"], algorithms=[os.environ["ALGORITHM"]])
+        email: str = str(payload.get("sub"))
+        if email is None:
+            raise credentials_exception
+        token_data = TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+    user = get_user_email(str(token_data.email))
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+def get_current_active_user(
+        current_user: CustomerModel = Depends(get_current_user)):
+    return current_user

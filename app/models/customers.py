@@ -60,3 +60,7 @@ class Login(BaseModel):
                 "password": "password",
             }
         }
+
+
+class TokenData(BaseModel):
+    email: Optional[str] = None

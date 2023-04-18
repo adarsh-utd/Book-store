@@ -1,7 +1,8 @@
 from datetime import timedelta
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
+from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
 from starlette.responses import JSONResponse
 
@@ -33,7 +34,7 @@ async def create_customer(request: Customers):
         "password": password,
         "email": request.email,
         "signed_up_ts": timestamp,
-        "is_deleted":False
+        "is_deleted": False
     }
     customers_collection.insert_one(customer)
     customer_exist = authenticate_user(request.email, request.password)
@@ -62,6 +63,32 @@ async def login(request: Login):
         return get_error_response("Customer not found",
                                   status.HTTP_404_NOT_FOUND)
     password_match = verify_password(request.password, customer.get("password"))
+    if not password_match:
+        return get_error_response("Incorrect password",
+                                  status.HTTP_400_BAD_REQUEST)
+
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={'sub': customer.get("email")},
+                                       expires_delta=access_token_expires)
+    expiry_time = get_timestamp() + settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 * 1000
+    response = LoginResponseModel(
+        id=str(customer.get('_id')),
+        name=customer.get('name'),
+        email=customer.get('email'),
+        access_token=access_token,
+        access_token_expiry_time=expiry_time
+    )
+    return JSONResponse(status_code=status.HTTP_201_CREATED,
+                        content=jsonable_encoder(response))
+
+
+@router.post('/token')
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    customer = customers_collection.find_one({'email': form_data.username})
+    if not customer:
+        return get_error_response("Customer not found",
+                                  status.HTTP_404_NOT_FOUND)
+    password_match = verify_password(form_data.password, customer.get("password"))
     if not password_match:
         return get_error_response("Incorrect password",
                                   status.HTTP_400_BAD_REQUEST)
