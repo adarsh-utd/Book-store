@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from datetime import timedelta, datetime
@@ -10,7 +11,9 @@ from passlib.context import CryptContext
 from starlette import status
 from starlette.responses import JSONResponse
 
-from app.db.base import customers_collection
+from app.core.config import settings
+from app.db.base import customers_collection, books_collection
+from app.models.books import Books
 from app.models.customers import CustomerModel, TokenData
 from app.models.error import APIResponseModel
 
@@ -85,3 +88,18 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 def get_current_active_user(
         current_user: CustomerModel = Depends(get_current_user)):
     return current_user
+
+
+def get_book_cache():
+    books = settings.redis_instance.get("books")
+    if books:
+        return json.loads(books.decode('utf-8'))
+    else:
+        return None
+
+
+def get_books_from_mongodb(find_query):
+    book_list = list(books_collection.find(find_query))
+    books = [Books(**x).list_books() for x in book_list]
+    settings.redis_instance.set('books', json.dumps(books))
+    return books

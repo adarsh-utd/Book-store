@@ -4,7 +4,7 @@ from starlette import status
 
 from app.db.base import books_collection, favourite_books_collection
 from app.models.books import BookRequestModel, Books, LikeDislike
-from app.utils.utils import get_error_response, get_current_active_user
+from app.utils.utils import get_error_response, get_current_active_user, get_book_cache, get_books_from_mongodb
 
 router = APIRouter(
     prefix="/book",
@@ -42,13 +42,12 @@ async def list_books(user: object = Depends(get_current_active_user)):
     if user is None:
         return get_error_response("Unauthorized",
                                   status.HTTP_401_UNAUTHORIZED)
-
+    books = get_book_cache()
     find_query = {
         "is_deleted": False
     }
-    book_list = list(books_collection.find(find_query))
-    books = [Books(**x).list_books() for x in book_list]
-
+    if books is None:
+        books = get_books_from_mongodb(find_query)
     response = {
         "books": books
     }
@@ -112,4 +111,3 @@ async def get_favourite_books(customer_id: str, user: object = Depends(get_curre
         "favourite_book_list": favourite_book_list
     }
     return response
-
