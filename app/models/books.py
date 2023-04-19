@@ -42,3 +42,14 @@ class Books(BaseModel):
 class LikeDislike(str, Enum):
     like = 'like'
     dislike = 'dislike'
+
+
+class BookUpdateRequestModel(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    image: Optional[str] = None
+
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}

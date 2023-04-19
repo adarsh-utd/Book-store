@@ -43,7 +43,9 @@ async def get_customers_with_favourite_books_count(user: object = Depends(get_cu
         favourite_book = next((a.get("favourite_books_list") for a in favourite_books
                                if a.get('customer_id') == customer.get('_id')), None)
         customer_response = CustomerModel(**customer).customer_list_response()
-        customer_response['favourite_book_count'] = len(favourite_book.split(','))
+        customer_response['favourite_book_count'] = 0
+        if favourite_book is not None:
+            customer_response['favourite_book_count'] = len(favourite_book.split(','))
         customers_response_list.append(customer_response)
     response = {
         "customer_response": customers_response_list
